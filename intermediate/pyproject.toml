@@ -1,0 +1,25 @@
+[tool.pyright]
+include = ["*.py"]
+exclude = ["**/__pycache__"]
+# SQLAlchemy-spezifische Ignores
+reportMissingImports = false
+reportOptionalMemberAccess = false
+reportGeneralTypeIssues = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
+reportUnknownParameterType = false
+pythonVersion = "3.12"
+
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "W", "C90"]
+ignore = [
+    "E501",  # line too long
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+# Für SQLAlchemy Dateien - spezifische Ignores
+"models.py" = ["F401"]
+"database.py" = ["F401"]

@@ -1,107 +1,162 @@
-from fastapi import FastAPI, HTTPException, status
-from pydantic import BaseModel, Field
-from typing import List, Optional
+from fastapi import FastAPI, Depends, HTTPException, status
+from sqlalchemy.orm import Session  # type: ignore[import]
+from typing import List
+import models
+import schemas
+from database import SessionLocal, engine  # type: ignore
 
-# FastAPI App mit mehr Details
+# Tabellen erzeugen (falls noch nicht vorhanden)
+models.Base.metadata.create_all(bind=engine)  # type: ignore
+
 app = FastAPI(
-    title="Intermediate Task API",
-    description="Eine erweiterte Task-Management API mit besserer Fehlerbehandlung",
+    title="Paul's Task API - Intermediate Version",
+    description="Eine erweiterte Task-Management API mit SQLite Datenbank",
     version="2.0.0",
 )
 
-# Erweiterte Datenmodelle
-class Task(BaseModel):
-    id: Optional[int] = None
-    title: str = Field(..., min_length=1, max_length=100)
-    done: bool = Field(default=False)
-    
-    class Config:
-        schema_extra = {"example": {"title": "Einkaufen gehen", "done": False}}
 
-class TaskCreate(BaseModel):
-    title: str = Field(..., min_length=1, max_length=100)
-    done: bool = Field(default=False)
+# DB-Session bereitstellen
+def get_db():  # type: ignore
+    db = SessionLocal()  # type: ignore
+    try:
+        yield db
+    finally:
+        db.close()  # type: ignore
 
-class TaskUpdate(BaseModel):
-    title: Optional[str] = Field(None, min_length=1, max_length=100)
-    done: Optional[bool] = None
 
-# Temporärer Speicher
-tasks: List[Task] = []
-next_id = 1
-
+# Root-Endpunkt
 @app.get("/", tags=["Root"])
 def read_root():
     return {
-        "message": "Welcome to Intermediate Task API!",
+        "message": "Welcome to Paul's Intermediate Task API!",
         "docs": "/docs",
-        "version": "2.0.0"
+        "version": "2.0.0",
+        "database": "SQLite",
     }
 
-@app.get("/tasks", response_model=List[Task], tags=["Tasks"])
-def get_tasks():
-    """Alle Tasks abrufen"""
-    return tasks
 
-@app.get("/tasks/{task_id}", response_model=Task, tags=["Tasks"])
-def get_task(task_id: int):
-    """Eine spezifische Task abrufen"""
-    task = next((t for t in tasks if t.id == task_id), None)
+# CREATE - Neue Task erstellen
+@app.post(
+    "/tasks",
+    response_model=schemas.Task,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Tasks"],
+)
+def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db)):  # type: ignore
+    """Erstellt eine neue Task in der Datenbank"""
+    db_task = models.Task(title=task.title, done=task.done)  # type: ignore
+    db.add(db_task)  # type: ignore
+    db.commit()  # type: ignore
+    db.refresh(db_task)  # type: ignore
+    return db_task
+
+
+# READ ALL - Alle Tasks abrufen
+@app.get("/tasks", response_model=List[schemas.Task], tags=["Tasks"])
+def get_tasks(db: Session = Depends(get_db)):  # type: ignore
+    """Gibt alle Tasks aus der Datenbank zurück"""
+    return db.query(models.Task).all()  # type: ignore
+
+
+# READ ONE - Eine spezifische Task abrufen
+@app.get("/tasks/{task_id}", response_model=schemas.Task, tags=["Tasks"])
+def get_task(task_id: int, db: Session = Depends(get_db)):  # type: ignore
+    """Gibt eine spezifische Task basierend auf der ID zurück"""
+    task = db.query(models.Task).filter(models.Task.id == task_id).first()  # type: ignore
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Task mit ID {task_id} nicht gefunden"
+            detail=f"Task mit ID {task_id} nicht gefunden",
         )
-    return task
+    return task  # type: ignore
 
-@app.post("/tasks", response_model=Task, status_code=status.HTTP_201_CREATED, tags=["Tasks"])
-def create_task(task_data: TaskCreate):
-    """Neue Task erstellen"""
-    global next_id
-    new_task = Task(id=next_id, title=task_data.title, done=task_data.done)
-    tasks.append(new_task)
-    next_id += 1
-    return new_task
 
-@app.put("/tasks/{task_id}", response_model=Task, tags=["Tasks"])
-def update_task(task_id: int, task_update: TaskUpdate):
-    """Task aktualisieren"""
-    task = next((t for t in tasks if t.id == task_id), None)
+# UPDATE - Task aktualisieren
+@app.put("/tasks/{task_id}", response_model=schemas.Task, tags=["Tasks"])
+def update_task(  # type: ignore
+    task_id: int, updated_task: schemas.TaskUpdate, db: Session = Depends(get_db)  # type: ignore
+):
+    """Aktualisiert eine existierende Task"""
+    task = db.query(models.Task).filter(models.Task.id == task_id).first()  # type: ignore
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Task mit ID {task_id} nicht gefunden"
+            detail=f"Task mit ID {task_id} nicht gefunden",
         )
-    
-    if task_update.title is not None:
-        task.title = task_update.title
-    if task_update.done is not None:
-        task.done = task_update.done
-    
-    return task
 
+    # Nur aktualisieren, wenn Werte angegeben sind
+    if updated_task.title is not None:
+        task.title = updated_task.title  # type: ignore
+    if updated_task.done is not None:
+        task.done = updated_task.done  # type: ignore
+
+    db.commit()  # type: ignore
+    db.refresh(task)  # type: ignore
+    return task  # type: ignore
+
+
+# DELETE - Task löschen
 @app.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Tasks"])
-def delete_task(task_id: int):
-    """Task löschen"""
-    global tasks
-    task = next((t for t in tasks if t.id == task_id), None)
+def delete_task(task_id: int, db: Session = Depends(get_db)):  # type: ignore
+    """Löscht eine Task basierend auf der ID"""
+    task = db.query(models.Task).filter(models.Task.id == task_id).first()  # type: ignore
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Task mit ID {task_id} nicht gefunden"
+            detail=f"Task mit ID {task_id} nicht gefunden",
         )
-    
-    tasks = [t for t in tasks if t.id != task_id]
+    db.delete(task)  # type: ignore
+    db.commit()  # type: ignore
+    return None
 
-@app.patch("/tasks/{task_id}/complete", response_model=Task, tags=["Tasks"])
-def mark_task_complete(task_id: int):
-    """Task als erledigt markieren"""
-    task = next((t for t in tasks if t.id == task_id), None)
+
+# PATCH - Task als erledigt markieren
+@app.patch("/tasks/{task_id}/complete", response_model=schemas.Task, tags=["Tasks"])
+def mark_task_complete(task_id: int, db: Session = Depends(get_db)):  # type: ignore
+    """Markiert eine Task als erledigt"""
+    task = db.query(models.Task).filter(models.Task.id == task_id).first()  # type: ignore
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Task mit ID {task_id} nicht gefunden"
+            detail=f"Task mit ID {task_id} nicht gefunden",
         )
-    
-    task.done = True
-    return task
+
+    task.done = True  # type: ignore
+    db.commit()  # type: ignore
+    db.refresh(task)  # type: ignore
+    return task  # type: ignore
+
+
+# PATCH - Task als nicht erledigt markieren
+@app.patch("/tasks/{task_id}/incomplete", response_model=schemas.Task, tags=["Tasks"])
+def mark_task_incomplete(task_id: int, db: Session = Depends(get_db)):  # type: ignore
+    """Markiert eine Task als nicht erledigt"""
+    task = db.query(models.Task).filter(models.Task.id == task_id).first()  # type: ignore
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Task mit ID {task_id} nicht gefunden",
+        )
+
+    task.done = False  # type: ignore
+    db.commit()  # type: ignore
+    db.refresh(task)  # type: ignore
+    return task  # type: ignore
+
+
+# GET - Tasks nach Status filtern
+@app.get(
+    "/tasks/status/{status_filter}", response_model=List[schemas.Task], tags=["Tasks"]
+)
+def get_tasks_by_status(status_filter: str, db: Session = Depends(get_db)):  # type: ignore
+    """Filtert Tasks nach Status (completed/pending)"""
+    if status_filter not in ["completed", "pending"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Status muss 'completed' oder 'pending' sein",
+        )
+
+    if status_filter == "completed":
+        return db.query(models.Task).filter(models.Task.done.is_(True)).all()  # type: ignore
+    else:
+        return db.query(models.Task).filter(models.Task.done.is_(False)).all()  # type: ignore
