@@ -17,7 +17,7 @@ class Task(BaseModel):
     done: bool = Field(False, description="Status der Task")
 
     class Config:
-        schema_extra = {"example": {"title": "Einkaufen gehen", "done": False}}
+        schema_extra = {"example": {"title": "Einkaufen gehen", "done": False}}  # type: ignore
 
 
 class TaskCreate(BaseModel):
