@@ -1,46 +1,51 @@
 # Paul's FastAPI Task Manager 📋
 
-Eine einfache Task-Management API erstellt mit FastAPI.
+Ein progressives FastAPI Lernprojekt mit drei Schwierigkeitsstufen.
 
-## ✨ Features
+## 📂 Projekt Struktur
 
-- ✅ CRUD Operationen für Tasks (Create, Read, Update, Delete)
-- 🔍 Tasks nach Status filtern (completed/pending)
-- 📚 Automatische API-Dokumentation
-- ✏️ Vollständige Task-Verwaltung
-- 🚀 Schnelle und moderne API mit FastAPI
+Dieses Repository enthält drei verschiedene Implementierungen der gleichen Task API:
 
-## 🛠️ Installation
+### 🟢 Easy (`/easy/`)
+Die Basis-Version mit allen wichtigen Features:
+- Vollständige REST API Implementation
+- CRUD Operationen (Create, Read, Update, Delete)
+- Professional HTTP Status Codes
+- Pydantic Datenvalidierung
+- Swagger/OpenAPI Dokumentation
 
-1. **Repository klonen:**
-```bash
-git clone https://github.com/DEIN-USERNAME/fastapi-task-api.git
-cd fastapi-task-api
-```
+### 🟡 Intermediate (`/intermediate/`)
+*Work in Progress - Erweiterte Features geplant*
 
-2. **Virtual Environment erstellen:**
-```bash
-python -m venv venv
-source venv/bin/activate  # Auf Windows: venv\Scripts\activate
-```
+### � Advanced (`/advanced/`)  
+*Work in Progress - Fortgeschrittene Features geplant*
 
-3. **Dependencies installieren:**
-```bash
-pip install fastapi uvicorn
-```
+## � Quick Start
 
-## 🚀 Starten
+Wähle eine Version und starte:
 
 ```bash
+# Easy Version
+cd easy
+pip install -r requirements.txt
+uvicorn main:app --reload
+
+# Intermediate Version (wenn fertig)
+cd intermediate
+pip install -r requirements.txt
+uvicorn main:app --reload
+
+# Advanced Version (wenn fertig)
+cd advanced
+pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
 Die API ist dann verfügbar unter:
 - **API:** http://localhost:8000
 - **Dokumentation:** http://localhost:8000/docs
-- **Alternative Docs:** http://localhost:8000/redoc
 
-## 📖 API Endpunkte
+## 📖 API Endpunkte (Easy Version)
 
 ### Tasks verwalten:
 - `GET /tasks` - Alle Tasks abrufen
@@ -54,24 +59,6 @@ Die API ist dann verfügbar unter:
 - `PATCH /tasks/{id}/incomplete` - Task als nicht erledigt markieren
 - `GET /tasks/status/completed` - Nur erledigte Tasks
 - `GET /tasks/status/pending` - Nur offene Tasks
-
-## 📝 Beispiel Verwendung
-
-```python
-# Neue Task erstellen
-POST /tasks
-{
-    "title": "Einkaufen gehen",
-    "done": false
-}
-
-# Task aktualisieren
-PUT /tasks/1
-{
-    "title": "Einkaufen erledigt",
-    "done": true
-}
-```
 
 ## 🛠️ Technologien
 

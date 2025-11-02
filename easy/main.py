@@ -4,7 +4,7 @@ from typing import List, Optional
 
 # Starte die App mit mehr Informationen
 app = FastAPI(
-    title="Paul's Task API",
+    title="Paul's Task API - Easy Version",
     description="Eine einfache Task-Management API",
     version="1.0.0",
 )
